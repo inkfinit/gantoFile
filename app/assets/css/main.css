@@ -1,0 +1,71 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@font-face {
+  font-family: "Lora";
+  src: url("../fonts/Lora-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("../fonts/Lora-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("../fonts/Lora-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Lora";
+  src: url("../fonts/Lora-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --font-sans: "Lora", Georgia, serif;
+  --font-serif: "Lora", Georgia, serif;
+  --color-ink: #202734;
+  --color-accent: #B7D894;
+  --color-canvas: #FAF9F6;
+  --color-surface: #F1F3F5;
+  --color-border: #D0D5DD;
+  --color-error: #DC2626;
+}
+
+*,
+*::before,
+*::after {
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html,
+body {
+  background-color: #FAF9F6;
+  color: #202734;
+  font-family: "Lora", Georgia, serif;
+  -webkit-font-smoothing: antialiased;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+button,
+input,
+[role="button"] {
+  font-family: "Lora", Georgia, serif;
+}

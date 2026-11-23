@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Nuxt build outputs
+.nuxt/
+.output/
+dist/
+
+# Python sidecar virtual environment and build artifacts
+sidecar-python/.venv/
+sidecar-python/venv/
+sidecar-python/__pycache__/
+sidecar-python/build/
+sidecar-python/dist/
+sidecar-python/*.spec
+*.pyc
+
+# Tauri & Rust build artifacts
+src-tauri/target/
+src-tauri/binaries/ganto-engine-*
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.swp
