@@ -47,5 +47,5 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![get_file_metadata])
         .run(tauri::generate_context!())
-        .expect("error while running Ganto application");
+        .expect("error while running GantoFile application");
 }

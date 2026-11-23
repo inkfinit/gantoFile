@@ -1,4 +1,4 @@
-"""Ganto PDF-to-DOCX offline conversion sidecar CLI."""
+"""GantoFile PDF-to-DOCX offline conversion sidecar CLI."""
 
 from __future__ import annotations
 
@@ -8,7 +8,8 @@ import json
 import logging
 from pathlib import Path
 import sys
-from typing import Any, Dict, List
+import tempfile
+from typing import Any, Dict, List, Tuple
 
 import fitz  # PyMuPDF
 
@@ -18,6 +19,7 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARNING, force=True)
 from pdf2docx import Converter
 
 from cleaner import CleanOptions, clean_docx
+from ocr import is_page_scanned, reconstruct_pdf_with_ocr
 
 _REAL_STDOUT = sys.stdout
 
@@ -30,7 +32,7 @@ def emit(payload: Dict[str, Any]) -> None:
 
 def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
     """Parse sidecar CLI arguments."""
-    parser = argparse.ArgumentParser(description="Ganto offline PDF-to-DOCX conversion engine")
+    parser = argparse.ArgumentParser(description="GantoFile offline PDF-to-DOCX conversion engine")
     parser.add_argument("--input", required=True, help="Path to the source PDF file")
     parser.add_argument("--output", required=True, help="Path to the output DOCX file")
     parser.add_argument(
@@ -57,11 +59,17 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         default=True,
         help="Ensure borderless layout tables remain invisible in Word/LibreOffice",
     )
+    parser.add_argument(
+        "--ocr-scanned",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Run offline ONNX OCR on scanned or image-based PDF pages",
+    )
     return parser.parse_args(argv)
 
 
-def inspect_pdf(input_path: Path) -> tuple[int, List[Dict[str, str]]]:
-    """Validate PDF readability, page count, and detect scanned/image-only PDFs."""
+def inspect_pdf(input_path: Path, ocr_enabled: bool) -> Tuple[int, List[int], List[Dict[str, str]]]:
+    """Validate PDF readability, page count, and detect scanned/image-only pages."""
     warnings: List[Dict[str, str]] = []
     doc = fitz.open(str(input_path))
     try:
@@ -86,32 +94,37 @@ def inspect_pdf(input_path: Path) -> tuple[int, List[Dict[str, str]]]:
             )
             sys.exit(1)
 
-        scanned_pages = 0
-        for page in doc:
-            text_len = len(page.get_text("text").strip())
-            images = page.get_images(full=False)
-            if text_len < 20 and len(images) > 0:
-                scanned_pages += 1
+        scanned_indices = [idx for idx, page in enumerate(doc) if is_page_scanned(page)]
 
-        if scanned_pages > 0 and scanned_pages >= (page_count / 2):
+        if scanned_indices and not ocr_enabled:
             warning = {
                 "event": "warning",
                 "code": "SCANNED_PDF",
                 "message": (
                     "This PDF appears to contain scanned images with limited selectable text. "
-                    "The converted DOCX may contain embedded images rather than editable text."
+                    "Offline OCR is disabled, so the converted DOCX may contain embedded images."
                 ),
             }
             emit(warning)
             warnings.append({"code": warning["code"], "message": warning["message"]})
 
-        return page_count, warnings
+        return page_count, scanned_indices, warnings
     finally:
         doc.close()
 
 
+def _convert_pdf_to_docx(pdf_path: Path, output_path: Path) -> None:
+    """Run pdf2docx conversion while keeping noisy library prints off stdout."""
+    with redirect_stdout(sys.stderr):
+        cv = Converter(str(pdf_path))
+        try:
+            cv.convert(str(output_path), start=0, end=None)
+        finally:
+            cv.close()
+
+
 def main(argv: List[str] | None = None) -> None:
-    """Run PDF inspection, pdf2docx conversion, and post-processing cleanup."""
+    """Run PDF inspection, optional offline OCR reconstruction, pdf2docx, and cleanup."""
     args = parse_args(argv)
 
     input_path = Path(args.input).expanduser().resolve()
@@ -148,29 +161,64 @@ def main(argv: List[str] | None = None) -> None:
                 "message": "Inspecting PDF structure and fonts...",
             }
         )
-        page_count, warnings = inspect_pdf(input_path)
+        page_count, scanned_indices, warnings = inspect_pdf(input_path, args.ocr_scanned)
+
+        ocr_pages = 0
+        if scanned_indices and args.ocr_scanned:
+            total_scanned = len(scanned_indices)
+            emit(
+                {
+                    "event": "progress",
+                    "percent": 20,
+                    "stage": "ocr",
+                    "message": f"Detected {total_scanned} image-based page(s). Running offline OCR...",
+                }
+            )
+            with tempfile.TemporaryDirectory(prefix="gantofile_ocr_") as tmp_dir:
+                ocr_pdf_path = Path(tmp_dir) / "ocr_reconstructed.pdf"
+
+                def _on_ocr_progress(done: int, total: int) -> None:
+                    pct = 20 + int((done / max(1, total)) * 35)
+                    emit(
+                        {
+                            "event": "progress",
+                            "percent": pct,
+                            "stage": "ocr",
+                            "message": f"Extracting text via offline OCR ({done}/{total} page(s))...",
+                        }
+                    )
+
+                with redirect_stdout(sys.stderr):
+                    ocr_pages = reconstruct_pdf_with_ocr(
+                        input_path,
+                        ocr_pdf_path,
+                        progress_cb=_on_ocr_progress,
+                    )
+
+                emit(
+                    {
+                        "event": "progress",
+                        "percent": 55,
+                        "stage": "converting",
+                        "message": f"Building DOCX layout for {page_count} page(s)...",
+                    }
+                )
+                _convert_pdf_to_docx(ocr_pdf_path, output_path)
+        else:
+            emit(
+                {
+                    "event": "progress",
+                    "percent": 30,
+                    "stage": "converting",
+                    "message": f"Converting {page_count} page(s) to DOCX layout...",
+                }
+            )
+            _convert_pdf_to_docx(input_path, output_path)
 
         emit(
             {
                 "event": "progress",
-                "percent": 30,
-                "stage": "converting",
-                "message": f"Converting {page_count} page(s) to DOCX layout...",
-            }
-        )
-
-        # Redirect noisy third-party prints to stderr so stdout remains valid JSONL
-        with redirect_stdout(sys.stderr):
-            cv = Converter(str(input_path))
-            try:
-                cv.convert(str(output_path), start=0, end=None)
-            finally:
-                cv.close()
-
-        emit(
-            {
-                "event": "progress",
-                "percent": 75,
+                "percent": 80,
                 "stage": "cleaning",
                 "message": "Normalizing typography, encoding, and layout tables...",
             }
@@ -183,6 +231,7 @@ def main(argv: List[str] | None = None) -> None:
             preserve_layout_tables=args.preserve_layout_tables,
         )
         stats = clean_docx(str(output_path), options)
+        stats["ocr_pages"] = ocr_pages
 
         emit(
             {

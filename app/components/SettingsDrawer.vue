@@ -19,6 +19,11 @@ interface ToggleItem {
 
 const toggleItems: ToggleItem[] = [
   {
+    key: 'ocrScanned',
+    label: 'Offline OCR for scanned / image PDFs',
+    description: 'Extract editable text and layout from image-based PDFs locally via ONNX OCR.',
+  },
+  {
     key: 'normalizeFonts',
     label: 'Normalize embedded PDF fonts',
     description: 'Strip subset prefixes (e.g. ABCDEE+) and map PostScript names to system fonts.',
@@ -103,20 +108,26 @@ const toggleItems: ToggleItem[] = [
         </div>
       </div>
 
-      <div class="pt-3 border-t border-[#202734]/15 flex items-center justify-between text-[11px] text-[#202734]/60">
-        <span>Engine: PyMuPDF + pdf2docx</span>
-        <button
-          type="button"
-          class="font-semibold text-[#202734] underline cursor-pointer"
-          @click="
-            options.normalizeFonts = true;
-            options.stripEmptyLines = true;
-            options.cleanEncoding = true;
-            options.preserveLayoutTables = true;
-          "
-        >
-          Reset defaults
-        </button>
+      <div class="pt-3 border-t border-[#202734]/15 space-y-1.5">
+        <div class="flex items-center justify-between text-[11px] text-[#202734]/60">
+          <span>Engine: PyMuPDF + RapidOCR + pdf2docx</span>
+          <button
+            type="button"
+            class="font-semibold text-[#202734] underline cursor-pointer"
+            @click="
+              options.ocrScanned = true;
+              options.normalizeFonts = true;
+              options.stripEmptyLines = true;
+              options.cleanEncoding = true;
+              options.preserveLayoutTables = true;
+            "
+          >
+            Reset defaults
+          </button>
+        </div>
+        <p class="text-[11px] text-[#202734]/75">
+          Developed by <span class="font-semibold text-[#202734]">Rianda Syahputra, S.P.</span>
+        </p>
       </div>
     </aside>
   </div>

@@ -1,4 +1,4 @@
-name: Build Ganto
+name: Build GantoFile
 
 on:
   workflow_dispatch:
@@ -19,11 +19,11 @@ jobs:
         include:
           - platform: macos-14
             target: aarch64-apple-darwin
-            artifact_name: ganto-macos-apple-silicon
+            artifact_name: gantofile-macos-apple-silicon
             bundle_paths: src-tauri/target/release/bundle/dmg/*.dmg
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact_name: ganto-windows-x64
+            artifact_name: gantofile-windows-x64
             bundle_paths: |
               src-tauri/target/release/bundle/msi/*.msi
               src-tauri/target/release/bundle/nsis/*.exe

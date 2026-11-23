@@ -28,6 +28,7 @@ export interface ConversionStats {
   empty_paragraphs_removed: number
   artifacts_stripped: number
   tables_processed: number
+  ocr_pages?: number
 }
 
 export interface ConversionResultMeta {
@@ -42,6 +43,7 @@ export interface ConversionOptions {
   stripEmptyLines: boolean
   cleanEncoding: boolean
   preserveLayoutTables: boolean
+  ocrScanned: boolean
 }
 
 function isTauriRuntime(): boolean {
@@ -94,6 +96,7 @@ export function useConverter() {
     stripEmptyLines: true,
     cleanEncoding: true,
     preserveLayoutTables: true,
+    ocrScanned: true,
   }))
 
   let unlistenDragDrop: (() => void) | null = null
@@ -140,7 +143,7 @@ export function useConverter() {
   async function browsePdf(): Promise<void> {
     if (!isTauriRuntime()) {
       status.value = 'error'
-      errorMessage.value = 'Desktop file picker is available when running inside the Ganto Tauri app.'
+      errorMessage.value = 'Desktop file picker is available when running inside the GantoFile Tauri app.'
       return
     }
 
@@ -226,7 +229,7 @@ export function useConverter() {
 
     if (!isTauriRuntime()) {
       status.value = 'error'
-      errorMessage.value = 'Sidecar conversion requires the Ganto Tauri desktop runtime.'
+      errorMessage.value = 'Sidecar conversion requires the GantoFile Tauri desktop runtime.'
       return
     }
 
@@ -252,6 +255,7 @@ export function useConverter() {
       options.value.preserveLayoutTables
         ? '--preserve-layout-tables'
         : '--no-preserve-layout-tables',
+      options.value.ocrScanned ? '--ocr-scanned' : '--no-ocr-scanned',
     ]
 
     let stdoutBuffer = ''

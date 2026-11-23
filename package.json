@@ -1,6 +1,7 @@
 {
-  "name": "ganto",
+  "name": "gantofile",
   "version": "0.1.0",
+  "author": "Rianda Syahputra, S.P.",
   "private": true,
   "type": "module",
   "scripts": {

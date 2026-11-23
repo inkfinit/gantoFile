@@ -58,9 +58,17 @@ const {
             Converted {{ resultMeta.pages }} page(s) cleanly.
           </p>
         </div>
-        <span class="px-2 py-0.5 text-[11px] font-semibold bg-[#B7D894] text-[#202734] border border-[#202734] rounded-[4px]">
-          Completed
-        </span>
+        <div class="flex items-center gap-1.5 shrink-0">
+          <span
+            v-if="resultMeta.stats.ocr_pages && resultMeta.stats.ocr_pages > 0"
+            class="px-2 py-0.5 text-[11px] font-semibold bg-[#FFFFFF] text-[#202734] border border-[#202734] rounded-[4px]"
+          >
+            OCR: {{ resultMeta.stats.ocr_pages }}p
+          </span>
+          <span class="px-2 py-0.5 text-[11px] font-semibold bg-[#B7D894] text-[#202734] border border-[#202734] rounded-[4px]">
+            Completed
+          </span>
+        </div>
       </div>
 
       <!-- Cleanup Telemetry Strip -->

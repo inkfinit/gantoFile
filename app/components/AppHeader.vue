@@ -7,12 +7,12 @@ defineEmits<{
 <template>
   <header class="flex items-center justify-between px-5 py-3.5 border-b border-[#202734]/15 bg-[#FAF9F6] shrink-0">
     <div class="flex items-center gap-2.5">
-      <div class="w-6 h-6 bg-[#202734] rounded-[4px] flex items-center justify-center shrink-0">
-        <span class="text-[#B7D894] font-bold text-xs leading-none">G</span>
+      <div class="w-7 h-6 bg-[#202734] rounded-[4px] flex items-center justify-center shrink-0">
+        <span class="text-[#B7D894] font-bold text-[11px] leading-none tracking-tight">GF</span>
       </div>
       <div class="flex items-baseline gap-2">
         <h1 class="text-lg font-bold tracking-[-0.01em] text-[#202734] leading-none">
-          Ganto
+          GantoFile
         </h1>
         <span class="text-[11px] font-medium text-[#202734]/70">
           PDF → DOCX

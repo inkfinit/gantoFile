@@ -1,8 +1,8 @@
 [package]
 name = "ganto"
 version = "0.1.0"
-description = "Offline high-precision PDF-to-DOCX document converter"
-authors = ["Ganto"]
+description = "Offline high-precision PDF-to-DOCX document converter with local OCR"
+authors = ["Rianda Syahputra, S.P."]
 edition = "2021"
 
 [lib]
