@@ -29,6 +29,7 @@ export interface ConversionStats {
   artifacts_stripped: number
   tables_processed: number
   ocr_pages?: number
+  ocr_images_replaced?: number
 }
 
 export interface ConversionResultMeta {
@@ -44,6 +45,7 @@ export interface ConversionOptions {
   cleanEncoding: boolean
   preserveLayoutTables: boolean
   ocrScanned: boolean
+  forceOcr: boolean
 }
 
 function isTauriRuntime(): boolean {
@@ -97,6 +99,7 @@ export function useConverter() {
     cleanEncoding: true,
     preserveLayoutTables: true,
     ocrScanned: true,
+    forceOcr: false,
   }))
 
   let unlistenDragDrop: (() => void) | null = null
@@ -256,6 +259,7 @@ export function useConverter() {
         ? '--preserve-layout-tables'
         : '--no-preserve-layout-tables',
       options.value.ocrScanned ? '--ocr-scanned' : '--no-ocr-scanned',
+      options.value.forceOcr ? '--force-ocr' : '--no-force-ocr',
     ]
 
     let stdoutBuffer = ''

@@ -60,10 +60,10 @@ const {
         </div>
         <div class="flex items-center gap-1.5 shrink-0">
           <span
-            v-if="resultMeta.stats.ocr_pages && resultMeta.stats.ocr_pages > 0"
+            v-if="(resultMeta.stats.ocr_pages ?? 0) > 0 || (resultMeta.stats.ocr_images_replaced ?? 0) > 0"
             class="px-2 py-0.5 text-[11px] font-semibold bg-[#FFFFFF] text-[#202734] border border-[#202734] rounded-[4px]"
           >
-            OCR: {{ resultMeta.stats.ocr_pages }}p
+            OCR: {{ resultMeta.stats.ocr_pages ?? 1 }}p<template v-if="(resultMeta.stats.ocr_images_replaced ?? 0) > 0"> ({{ resultMeta.stats.ocr_images_replaced }} img)</template>
           </span>
           <span class="px-2 py-0.5 text-[11px] font-semibold bg-[#B7D894] text-[#202734] border border-[#202734] rounded-[4px]">
             Completed

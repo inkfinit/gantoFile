@@ -19,7 +19,7 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARNING, force=True)
 from pdf2docx import Converter
 
 from cleaner import CleanOptions, clean_docx
-from ocr import is_page_scanned, reconstruct_pdf_with_ocr
+from ocr import plan_ocr_pages, reconstruct_pdf_with_ocr
 
 _REAL_STDOUT = sys.stdout
 
@@ -65,11 +65,21 @@ def parse_args(argv: List[str] | None = None) -> argparse.Namespace:
         default=True,
         help="Run offline ONNX OCR on scanned or image-based PDF pages",
     )
+    parser.add_argument(
+        "--force-ocr",
+        action=argparse.BooleanOptionalAction,
+        default=False,
+        help="Force full-page offline OCR on every page regardless of existing text",
+    )
     return parser.parse_args(argv)
 
 
-def inspect_pdf(input_path: Path, ocr_enabled: bool) -> Tuple[int, List[int], List[Dict[str, str]]]:
-    """Validate PDF readability, page count, and detect scanned/image-only pages."""
+def inspect_pdf(
+    input_path: Path,
+    ocr_enabled: bool,
+    force_ocr: bool,
+) -> Tuple[int, Dict[int, str], List[Dict[str, str]]]:
+    """Validate PDF readability, page count, and plan OCR processing."""
     warnings: List[Dict[str, str]] = []
     doc = fitz.open(str(input_path))
     try:
@@ -93,24 +103,25 @@ def inspect_pdf(input_path: Path, ocr_enabled: bool) -> Tuple[int, List[int], Li
                 }
             )
             sys.exit(1)
-
-        scanned_indices = [idx for idx, page in enumerate(doc) if is_page_scanned(page)]
-
-        if scanned_indices and not ocr_enabled:
-            warning = {
-                "event": "warning",
-                "code": "SCANNED_PDF",
-                "message": (
-                    "This PDF appears to contain scanned images with limited selectable text. "
-                    "Offline OCR is disabled, so the converted DOCX may contain embedded images."
-                ),
-            }
-            emit(warning)
-            warnings.append({"code": warning["code"], "message": warning["message"]})
-
-        return page_count, scanned_indices, warnings
     finally:
         doc.close()
+
+    _, ocr_plan = plan_ocr_pages(input_path, force_ocr=force_ocr)
+    has_full_scan = any(mode == "full_page" for mode in ocr_plan.values())
+
+    if has_full_scan and not ocr_enabled and not force_ocr:
+        warning = {
+            "event": "warning",
+            "code": "SCANNED_PDF",
+            "message": (
+                "This PDF appears to contain scanned images with limited selectable text. "
+                "Offline OCR is disabled, so the converted DOCX may contain embedded images."
+            ),
+        }
+        emit(warning)
+        warnings.append({"code": warning["code"], "message": warning["message"]})
+
+    return page_count, ocr_plan, warnings
 
 
 def _convert_pdf_to_docx(pdf_path: Path, output_path: Path) -> None:
@@ -158,20 +169,26 @@ def main(argv: List[str] | None = None) -> None:
                 "event": "progress",
                 "percent": 10,
                 "stage": "inspecting",
-                "message": "Inspecting PDF structure and fonts...",
+                "message": "Inspecting PDF structure, fonts, and embedded images...",
             }
         )
-        page_count, scanned_indices, warnings = inspect_pdf(input_path, args.ocr_scanned)
+        page_count, ocr_plan, warnings = inspect_pdf(
+            input_path,
+            ocr_enabled=args.ocr_scanned,
+            force_ocr=args.force_ocr,
+        )
 
         ocr_pages = 0
-        if scanned_indices and args.ocr_scanned:
-            total_scanned = len(scanned_indices)
+        ocr_images_replaced = 0
+
+        if ocr_plan and (args.ocr_scanned or args.force_ocr):
+            total_candidates = len(ocr_plan)
             emit(
                 {
                     "event": "progress",
                     "percent": 20,
                     "stage": "ocr",
-                    "message": f"Detected {total_scanned} image-based page(s). Running offline OCR...",
+                    "message": f"Inspecting {total_candidates} page(s) for text inside images (offline OCR)...",
                 }
             )
             with tempfile.TemporaryDirectory(prefix="gantofile_ocr_") as tmp_dir:
@@ -184,14 +201,15 @@ def main(argv: List[str] | None = None) -> None:
                             "event": "progress",
                             "percent": pct,
                             "stage": "ocr",
-                            "message": f"Extracting text via offline OCR ({done}/{total} page(s))...",
+                            "message": f"Running offline OCR ({done}/{total} page(s))...",
                         }
                     )
 
                 with redirect_stdout(sys.stderr):
-                    ocr_pages = reconstruct_pdf_with_ocr(
+                    ocr_pages, ocr_images_replaced = reconstruct_pdf_with_ocr(
                         input_path,
                         ocr_pdf_path,
+                        force_ocr=args.force_ocr,
                         progress_cb=_on_ocr_progress,
                     )
 
@@ -203,7 +221,12 @@ def main(argv: List[str] | None = None) -> None:
                         "message": f"Building DOCX layout for {page_count} page(s)...",
                     }
                 )
-                _convert_pdf_to_docx(ocr_pdf_path, output_path)
+                source_for_docx = (
+                    ocr_pdf_path
+                    if (ocr_pages > 0 or ocr_images_replaced > 0) and ocr_pdf_path.exists()
+                    else input_path
+                )
+                _convert_pdf_to_docx(source_for_docx, output_path)
         else:
             emit(
                 {
@@ -232,6 +255,7 @@ def main(argv: List[str] | None = None) -> None:
         )
         stats = clean_docx(str(output_path), options)
         stats["ocr_pages"] = ocr_pages
+        stats["ocr_images_replaced"] = ocr_images_replaced
 
         emit(
             {

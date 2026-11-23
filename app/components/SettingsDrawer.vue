@@ -21,7 +21,12 @@ const toggleItems: ToggleItem[] = [
   {
     key: 'ocrScanned',
     label: 'Offline OCR for scanned / image PDFs',
-    description: 'Extract editable text and layout from image-based PDFs locally via ONNX OCR.',
+    description: 'Extract editable text from full-page scans and embedded text-images locally.',
+  },
+  {
+    key: 'forceOcr',
+    label: 'Force OCR on all pages',
+    description: 'Treat every page as an image and extract all text via offline OCR (useful for broken hidden text layers).',
   },
   {
     key: 'normalizeFonts',
@@ -60,7 +65,7 @@ const toggleItems: ToggleItem[] = [
       role="dialog"
       aria-label="Conversion Options"
     >
-      <div class="space-y-4">
+      <div class="space-y-4 overflow-y-auto pr-1 min-h-0 flex-1 pb-3">
         <div class="flex items-center justify-between pb-3 border-b border-[#202734]/15">
           <div>
             <h2 class="text-sm font-bold tracking-[-0.01em] text-[#202734]">
@@ -116,6 +121,7 @@ const toggleItems: ToggleItem[] = [
             class="font-semibold text-[#202734] underline cursor-pointer"
             @click="
               options.ocrScanned = true;
+              options.forceOcr = false;
               options.normalizeFonts = true;
               options.stripEmptyLines = true;
               options.cleanEncoding = true;
